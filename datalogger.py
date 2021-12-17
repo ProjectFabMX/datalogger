@@ -16,7 +16,7 @@ useTestData = False
 class DataReader:
     def __init__(self, useTestData):
         self.useTestData = useTestData
-        if useTestData:
+        if self.useTestData:
             self.ser = open('testdata.txt')
             print('Reading test data')   
         else:
@@ -25,7 +25,7 @@ class DataReader:
             self.ser.flushInput()
 
     def readLine(self):
-        if useTestData:
+        if self.useTestData:
             line = self.ser.readline()
             if not line:
                 raise Exception("end of file")
@@ -35,10 +35,12 @@ class DataReader:
         return line
 
 class DataLogger:
-    def run(self):
-        reader = DataReader(useTestData)
+    def __init__(self, csvFile, reader):
+        self.csvFile = csvFile
+        self.reader = reader
 
-        f = open(csvFile, 'w', newline='')
+    def run(self):        
+        f = open(self.csvFile, 'w', newline='')
         writer = csv.writer(f)
         writer.writerow(["Timestamp", "Mass", "stable"])
 
@@ -46,7 +48,7 @@ class DataLogger:
 
         while True:
             try:
-                line = reader.readLine()
+                line = self.reader.readLine()
                 timestamp = datetime.now().isoformat()
                 #print (line)
                 if len(line) >= 10:
@@ -61,6 +63,6 @@ class DataLogger:
             except:        
                 break
 
-
-dataLogger = DataLogger()
+reader = DataReader(useTestData)
+dataLogger = DataLogger(csvFile, reader)
 dataLogger.run()
