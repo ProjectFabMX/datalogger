@@ -7,36 +7,60 @@ from datetime import datetime
 
 #port = '/dev/ttyACM0'
 port = 'COM7'
-csvFile = './data.csv'
-useTestData = True
+timestamp = datetime.now().isoformat().replace(":","_")
+csvFile = './data_' + timestamp + '.csv'
+useTestData = False
 
-ser = None
-if useTestData:
-    ser = open('testdata.txt')
-else:
-    serial.Serial(port)
-    ser.flushInput()
 
-f = open(csvFile, 'w')
-writer = csv.writer(f)
-writer.writerow(["Timestamp", "Mass", "stable"])
 
-print("Reading data from %s ..." % (port))
-print("Saving to %s ..." % (csvFile))
+class DataReader:
+    def __init__(self, useTestData):
+        self.useTestData = useTestData
+        if useTestData:
+            self.ser = open('testdata.txt')
+            print('Reading test data')   
+        else:
+            print("Reading data from %s ..." % (port))
+            self.ser = serial.Serial(port)
+            self.ser.flushInput()
 
-while True:
-    try:
-        line = ser.readline().decode("ascii").replace("\n","").replace("\r","")
-        timestamp = datetime.now().isoformat()
-        #print (line)
-        if len(line) > 10:
+    def readLine(self):
+        if useTestData:
+            line = self.ser.readline()
+            if not line:
+                raise Exception("end of file")
+        else:
+            line = self.ser.readline().decode("ascii")
+        line = line.strip("\n\r ")
+        return line
+
+class DataLogger:
+    def run(self):
+        reader = DataReader(useTestData)
+
+        f = open(csvFile, 'w', newline='')
+        writer = csv.writer(f)
+        writer.writerow(["Timestamp", "Mass", "stable"])
+
+        print("Saving to %s ..." % (csvFile))
+
+        while True:
             try:
-                valueStr = line[:10].replace("+","").replace(" ","")
-                value = float(valueStr) # try to convert, if error, skip line
-                stable = line[10:].strip()
-                writer.writerow([timestamp, valueStr, stable])
-                #print("%s, %s, %s" % (timestamp, valueStr, stable))
-            except:
-                pass        
-    except:        
-        break
+                line = reader.readLine()
+                timestamp = datetime.now().isoformat()
+                #print (line)
+                if len(line) >= 10:
+                    try:
+                        valueStr = line[:10].replace("+","").replace(" ","")
+                        value = float(valueStr) # try to convert, if error, skip line
+                        stable = line[10:].strip()
+                        writer.writerow([timestamp, valueStr, stable])
+                        #print("%s, %s, %s" % (timestamp, valueStr, stable))
+                    except:
+                        pass        
+            except:        
+                break
+
+
+dataLogger = DataLogger()
+dataLogger.run()
